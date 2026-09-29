@@ -2139,6 +2139,7 @@ export default withEnglishFallback({
     copyExtractorSmart: "智能复制",
     copyExtractorRaw: "单元格原文",
     copyExtractorWithHeaders: "{format}（含表头）",
+    copyExtractorTsvAnnotated: "TSV（含注释）",
     copyExtractorOneRow: "单行 CSV",
     copyExtractorJsonArray: "JSON 数组",
     copyExtractorSqlInList: "SQL IN 列表",

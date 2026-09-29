@@ -1,7 +1,7 @@
 import type { DatabaseType } from "@/types/database";
 import type { DataGridCopyInsertMode, DataGridTableMeta } from "@/lib/dataGrid/dataGridSql";
 
-export const DATA_GRID_COPY_EXTRACTOR_IDS = ["raw", "tsv", "tsv-with-headers", "csv", "csv-with-headers", "pipe-separated", "dsv", "json", "json-lines", "one-row", "sql-in-list", "sql-inserts", "sql-updates", "sql-select", "where-clause", "markdown", "html", "xml", "pretty"] as const;
+export const DATA_GRID_COPY_EXTRACTOR_IDS = ["raw", "tsv", "tsv-with-headers", "tsv-annotated", "csv", "csv-with-headers", "pipe-separated", "dsv", "json", "json-lines", "one-row", "sql-in-list", "sql-inserts", "sql-updates", "sql-select", "where-clause", "markdown", "html", "xml", "pretty"] as const;
 
 export type DataGridCopyExtractorId = (typeof DATA_GRID_COPY_EXTRACTOR_IDS)[number];
 export type DataGridCopyPreference = "smart" | Exclude<DataGridCopyExtractorId, "raw">;
@@ -11,6 +11,7 @@ export const DATA_GRID_DEFAULT_COPY_PREFERENCES: readonly DataGridCopyPreference
   "smart",
   "tsv",
   "tsv-with-headers",
+  "tsv-annotated",
   "csv",
   "csv-with-headers",
   "pipe-separated",
@@ -35,6 +36,7 @@ export const DATA_GRID_COPY_EXTRACTOR_DESCRIPTORS: Record<DataGridCopyExtractorI
   raw: { category: "raw" },
   tsv: { category: "delimited" },
   "tsv-with-headers": { category: "delimited" },
+  "tsv-annotated": { category: "delimited" },
   csv: { category: "delimited" },
   "csv-with-headers": { category: "delimited" },
   "pipe-separated": { category: "delimited" },
@@ -213,7 +215,7 @@ export function validateDataGridExtractorOptions(extractor: DataGridCopyExtracto
   if (unicodeCodePointLength(options.dsv.quote) !== 1 || quoteCodePoint === undefined || quoteCodePoint <= 0x1f || quoteCodePoint === 0x7f) return "invalid-quote";
   if (unicodeCodePointLength(options.dsv.nullText) > 64) return "null-text-too-long";
 
-  const columnSeparator = extractor === "tsv" || extractor === "tsv-with-headers" ? "\t" : extractor === "csv" || extractor === "csv-with-headers" ? "," : extractor === "pipe-separated" ? "|" : options.dsv.columnSeparator;
+  const columnSeparator = extractor === "tsv" || extractor === "tsv-with-headers" || extractor === "tsv-annotated" ? "\t" : extractor === "csv" || extractor === "csv-with-headers" ? "," : extractor === "pipe-separated" ? "|" : options.dsv.columnSeparator;
   if (!columnSeparator) return "column-separator-empty";
   const usesRowSeparator = extractor !== "one-row";
   if (usesRowSeparator && !options.dsv.rowSeparator) return "row-separator-empty";
@@ -221,4 +223,20 @@ export function validateDataGridExtractorOptions(extractor: DataGridCopyExtracto
   if (usesRowSeparator && (columnSeparator.includes(options.dsv.rowSeparator) || options.dsv.rowSeparator.includes(columnSeparator))) return "separators-overlap";
   if (columnSeparator.includes(options.dsv.quote) || (usesRowSeparator && options.dsv.rowSeparator.includes(options.dsv.quote))) return "quote-conflicts";
   return null;
+}
+
+/** First line of a "tsv-annotated" extraction: `comment（table）`, degrading to
+ *  whichever half exists. */
+export function annotatedTableHeader(tableComment: string | null | undefined, tableName: string | undefined): string {
+  const comment = (tableComment ?? "").trim();
+  const name = (tableName ?? "").trim();
+  if (comment && name) return `${comment}（${name}）`;
+  return comment || name || "";
+}
+
+/** A tab or a line break inside a metadata cell would shift every column after it,
+ *  so collapse them to a space. Data cells keep going through the normal TSV
+ *  writer, which has its own quoting rules. */
+export function annotatedMetadataCell(value: string | undefined): string {
+  return (value ?? "").replace(/[\t\r\n]/g, " ");
 }

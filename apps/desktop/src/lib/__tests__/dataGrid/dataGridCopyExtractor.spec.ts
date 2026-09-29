@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_DATA_GRID_EXTRACTOR_OPTIONS, normalizeDataGridCopyPreference, normalizeDataGridExtractorOptions, resolveDataGridCopyPreference, validateDataGridExtractorOptions } from "@/lib/dataGrid/dataGridCopyExtractor";
+import { DEFAULT_DATA_GRID_EXTRACTOR_OPTIONS, DATA_GRID_COPY_EXTRACTOR_DESCRIPTORS, DATA_GRID_DEFAULT_COPY_PREFERENCES, annotatedMetadataCell, annotatedTableHeader, normalizeDataGridCopyPreference, normalizeDataGridExtractorOptions, resolveDataGridCopyPreference, validateDataGridExtractorOptions } from "@/lib/dataGrid/dataGridCopyExtractor";
 
 describe("data-grid extractor options", () => {
   it("preserves native SQL defaults and normalizes portable INSERT options", () => {
@@ -93,5 +93,34 @@ describe("data-grid extractor options", () => {
     options.dsv.quote = '"';
     options.dsv.nullText = "x".repeat(65);
     expect(validateDataGridExtractorOptions("dsv", options)).toBe("null-text-too-long");
+  });
+});
+
+describe("tsv-annotated", () => {
+  it("writes `comment（table）` and degrades to whichever half exists", () => {
+    expect(annotatedTableHeader("ポートフォリオ属性", "t_portfolio_attribute")).toBe("ポートフォリオ属性（t_portfolio_attribute）");
+    expect(annotatedTableHeader(null, "t_users")).toBe("t_users");
+    expect(annotatedTableHeader("ユーザー", undefined)).toBe("ユーザー");
+    expect(annotatedTableHeader("   ", "  ")).toBe("");
+    // The table comment is free text, so a full-width bracket inside it is kept as-is.
+    expect(annotatedTableHeader("name（alt）", "t")).toBe("name（alt）（t）");
+  });
+
+  it("collapses tabs and line breaks inside a metadata cell", () => {
+    expect(annotatedMetadataCell("a\tb")).toBe("a b");
+    expect(annotatedMetadataCell("a\nb\rc")).toBe("a b c");
+    expect(annotatedMetadataCell(undefined)).toBe("");
+  });
+
+  it("is a delimited format that forces a tab separator and offers itself as a copy preference", () => {
+    expect(DATA_GRID_COPY_EXTRACTOR_DESCRIPTORS["tsv-annotated"].category).toBe("delimited");
+    expect(DATA_GRID_DEFAULT_COPY_PREFERENCES).toContain("tsv-annotated");
+
+    // A configured separator that would overlap the row separator must not reach a
+    // TSV-based format, which always joins columns with a tab.
+    const options = normalizeDataGridExtractorOptions(DEFAULT_DATA_GRID_EXTRACTOR_OPTIONS);
+    options.dsv.columnSeparator = "\n";
+    expect(validateDataGridExtractorOptions("tsv-annotated", options)).toBeNull();
+    expect(validateDataGridExtractorOptions("dsv", options)).toBe("separators-overlap");
   });
 });
