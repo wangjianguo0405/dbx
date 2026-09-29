@@ -2659,6 +2659,7 @@ export default withEnglishFallback({
     copyExtractorSmart: "スマートコピー",
     copyExtractorRaw: "セルの原文",
     copyExtractorWithHeaders: "{format}（ヘッダー付き）",
+    copyExtractorTsvAnnotated: "TSV（コメント付き）",
     copyExtractorOneRow: "単行CSV",
     copyExtractorJsonArray: "JSON 配列",
     copyExtractorSqlInList: "SQL IN リスト",
