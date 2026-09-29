@@ -2172,6 +2172,7 @@ export default withEnglishFallback({
     copyExtractorRaw: "原文（单列）",
     copyExtractorRawHint: "将选中单列的各行用换行拼接，保留原有 Tab、换行和引号。",
     copyExtractorWithHeaders: "{format}（含表头）",
+    copyExtractorTsvAnnotated: "TSV（含注释）",
     copyExtractorOneRow: "单行 CSV",
     copyExtractorJsonArray: "JSON 数组",
     copyExtractorSqlInList: "SQL IN 列表",

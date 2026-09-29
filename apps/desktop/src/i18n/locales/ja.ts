@@ -2741,6 +2741,7 @@ export default withEnglishFallback({
     copyExtractorRaw: "原文（単一列）",
     copyExtractorRawHint: "選択した単一列の各行を改行で結合し、タブ、改行、引用符をそのまま保持します。",
     copyExtractorWithHeaders: "{format}（ヘッダー付き）",
+    copyExtractorTsvAnnotated: "TSV（コメント付き）",
     copyExtractorOneRow: "単行CSV",
     copyExtractorJsonArray: "JSON 配列",
     copyExtractorSqlInList: "SQL IN リスト",

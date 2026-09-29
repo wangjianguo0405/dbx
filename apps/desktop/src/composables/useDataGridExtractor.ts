@@ -11,6 +11,8 @@ import {
   extractorUnavailableForDatabase,
   normalizeDataGridExtractorOptions,
   resolveDataGridCopyPreference,
+  annotatedMetadataCell,
+  annotatedTableHeader,
   type DataGridCopyExtractorId,
   type DataGridCopyPreference,
   type DataGridExtractPreview,
@@ -77,6 +79,10 @@ interface UseDataGridExtractorOptions {
   buildMongoInsert: (extractorOptions: DataGridExtractorOptions, rowLimit?: number) => Promise<string | undefined>;
   buildMongoUpdate?: (request: DataGridExtractRequest, rowLimit?: number) => Promise<string | undefined>;
   canBuildMongoUpdate?: (request: DataGridExtractRequest) => boolean;
+  /** Table comment for the annotated TSV's first line; null/undefined when unknown. */
+  tableComment?: ComputedRef<string | null | undefined>;
+  /** Per-column comments aligned to the given display names, for the annotated TSV's second line. */
+  resolveColumnComments?: (targetColumns: readonly string[]) => Array<string | undefined>;
 }
 
 export function useDataGridExtractor(options: UseDataGridExtractorOptions) {
@@ -392,13 +398,44 @@ export function useDataGridExtractor(options: UseDataGridExtractorOptions) {
     return { text, mimeType: "application/javascript", fileExtension: "js", rowCount: rowLimit ?? request.rows.length, columnCount: request.selectedColumnIndexes.length, warnings: undefined, omittedColumns: undefined };
   }
 
+  /**
+   * `tsv-annotated` is assembled here instead of in the backend: the data rows come
+   * from an ordinary TSV extraction, so quoting, NULL text and binary handling stay
+   * byte-identical to "Copy as TSV", and the three metadata lines are prepended.
+   */
+  async function resolveAnnotatedTsvResult(request: DataGridExtractRequest): Promise<DataGridExtractResult | undefined> {
+    if (request.extractor !== "tsv-annotated") return undefined;
+    const dataResult = await api.extractDataGridSelection({ ...request, extractor: "tsv" });
+    const columnNames = request.selectedColumnIndexes.map((index) => request.columns[index]?.displayName ?? "");
+    const comments = options.resolveColumnComments?.(columnNames) ?? [];
+    const lines: string[] = [];
+    // request.tableMeta is only populated for SQL-category extractors, so the table
+    // identity comes from the composable's own ref instead.
+    const header = annotatedTableHeader(options.tableComment?.value, options.tableMeta?.value?.tableName);
+    if (header) lines.push(header);
+    // The comment line keeps a placeholder per column even when nothing is commented,
+    // so the columns stay aligned with the header and data lines.
+    lines.push(comments.map((comment) => annotatedMetadataCell(comment)).join("\t"));
+    lines.push(columnNames.map((name) => annotatedMetadataCell(name)).join("\t"));
+    return {
+      text: dataResult.text.length > 0 ? `${lines.join("\n")}\n${dataResult.text}` : lines.join("\n"),
+      mimeType: dataResult.mimeType,
+      fileExtension: dataResult.fileExtension,
+      rowCount: dataResult.rowCount,
+      columnCount: dataResult.columnCount,
+      omittedColumns: dataResult.omittedColumns,
+      warnings: dataResult.warnings,
+    };
+  }
+
   async function extractWithExtractor(extractor: DataGridCopyExtractorId, extractorOptions: DataGridExtractorOptions = options.extractorOptions?.value ?? DEFAULT_DATA_GRID_EXTRACTOR_OPTIONS, maxRows?: number): Promise<ResolvedDataGridExtraction | null> {
     const initialRequest = buildRequest(extractor, extractorOptions);
     if (!initialRequest) return null;
     const rowLimit = maxRows === undefined ? undefined : Math.min(initialRequest.rows.length, maxRows);
     const request = await resolveRequestSourceValues(initialRequest, rowLimit);
-    const mongoResult = await resolveMongoExtractorResult(extractor, request, rowLimit);
-    const result = mongoResult ?? (await api.extractDataGridSelection(request));
+    const annotatedResult = await resolveAnnotatedTsvResult(request);
+    const mongoResult = annotatedResult ? undefined : await resolveMongoExtractorResult(extractor, request, rowLimit);
+    const result = annotatedResult ?? mongoResult ?? (await api.extractDataGridSelection(request));
     if (!result.text && !extractorAllowsEmptyOutput(extractor)) return null;
     return { initialRequest, request, result };
   }
@@ -416,7 +453,9 @@ export function useDataGridExtractor(options: UseDataGridExtractorOptions) {
       // Derive the grid paste-back payload from the effective request schema so
       // hidden support columns, row headers, NULLs, tabs, and newlines keep the
       // same shape and values as the rendered raw text or TSV.
-      const isGridTabularCopy = extractor === "raw" || extractor === "tsv" || extractor === "tsv-with-headers";
+      // "tsv-annotated" is included so an internal paste-back still lands the bare
+      // rows: the clipboard text carries the metadata lines, the grid payload does not.
+      const isGridTabularCopy = extractor === "raw" || extractor === "tsv" || extractor === "tsv-with-headers" || extractor === "tsv-annotated";
       const gridCopy = isGridTabularCopy
         ? (() => {
             const includeRowHeader = extractor !== "raw" && request.options.dsv.includeRowHeader;
