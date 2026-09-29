@@ -2987,6 +2987,7 @@ export default {
     copyExtractorRaw: "Original Text (Single Column)",
     copyExtractorRawHint: "Join the selected column’s rows with a newline, preserving tabs, line breaks, and quotes.",
     copyExtractorWithHeaders: "{format} with Headers",
+    copyExtractorTsvAnnotated: "TSV with Comments",
     copyExtractorOneRow: "One-row",
     copyExtractorJsonArray: "JSON Array",
     copyExtractorSqlInList: "SQL IN List",
