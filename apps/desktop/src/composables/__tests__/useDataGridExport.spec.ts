@@ -141,6 +141,7 @@ function createExportState(
   contextColumn?: number,
   databaseType: DatabaseType = "mysql",
   displayValue?: (value: CellValue, columnIndex: number) => string,
+  tableComment?: string,
 ) {
   const rows = (rowDataList ?? [rowData ?? columns.map((column, index) => (column === "id" ? 1 : `value-${index}`))]).map((data, index) => ({ ...row(data), id: index + 1 }));
   const resolvedContextRowId = contextRowId === undefined ? (rows[0]?.id ?? null) : contextRowId;
@@ -158,6 +159,7 @@ function createExportState(
     sourceColumns: computed(() => columns),
     visibleColumnIndexes: computed(() => visibleColumnIndexes ?? columns.map((_, index) => index)),
     columnTypes: computed(() => columns.map((column) => tableMeta.columns?.find((item) => item.name === column)?.data_type ?? "varchar")),
+    tableComment: tableComment === undefined ? undefined : computed(() => tableComment),
     extractorOptions: computed(() => extractorOptions),
     whereInput: computed(() => undefined),
     orderBy: computed(() => undefined),
@@ -1938,5 +1940,74 @@ describe("useDataGridExport VARBINARY 文本复制 (#7471)", () => {
       ["id", "name"],
       ["1", "0x616263"],
     ]);
+  });
+});
+
+describe("tsv-annotated copy", () => {
+  const annotatedTable: DataGridTableMeta = {
+    tableName: "t_portfolio_attribute",
+    primaryKeys: [],
+    columns: [
+      { name: "portfolio_cd", data_type: "varchar", is_nullable: false, comment: "ポートフォリオコード" },
+      { name: "goal_freeword", data_type: "varchar", is_nullable: true },
+    ],
+  };
+  const columns = ["portfolio_cd", "goal_freeword"];
+  const dataText = "0000000054\t予備⑥－１";
+
+  function mockTsvExtraction() {
+    vi.mocked(extractDataGridSelection).mockResolvedValueOnce({
+      text: dataText,
+      mimeType: "text/tab-separated-values",
+      fileExtension: "tsv",
+      rowCount: 1,
+      columnCount: 2,
+    });
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("prepends the table comment, the column comments and the column names", async () => {
+    mockTsvExtraction();
+    const state = createExportState(annotatedTable, columns, undefined, undefined, undefined, undefined, [1], DEFAULT_DATA_GRID_EXTRACTOR_OPTIONS, false, undefined, false, undefined, undefined, "postgres", undefined, "ポートフォリオ属性");
+
+    await state.copyWithExtractor("tsv-annotated");
+
+    // The data half must be an ordinary TSV extraction so quoting, NULL text and
+    // binary handling stay byte-identical to "Copy as TSV".
+    expect(extractDataGridSelection).toHaveBeenCalledWith(expect.objectContaining({ extractor: "tsv" }));
+    const text = ["ポートフォリオ属性（t_portfolio_attribute）", "ポートフォリオコード\t", "portfolio_cd\tgoal_freeword", dataText].join("\n");
+    expect(copyToClipboard).toHaveBeenCalledWith(text);
+    // The three metadata lines are clipboard text only: the internal copy the grid
+    // remembers for a paste-back stays data-only, so nothing extra lands in the grid.
+    expect(parseDataGridClipboard(text)).toEqual([["value-0", "value-1"]]);
+  });
+
+  it("degrades the first line to the table name when no table comment is known", async () => {
+    mockTsvExtraction();
+    const state = createExportState(annotatedTable, columns, undefined, undefined, undefined, undefined, [1]);
+
+    await state.copyWithExtractor("tsv-annotated");
+
+    expect(copyToClipboard).toHaveBeenCalledWith(["t_portfolio_attribute", "ポートフォリオコード\t", "portfolio_cd\tgoal_freeword", dataText].join("\n"));
+  });
+
+  it("keeps a per-column placeholder even when nothing in the selection is commented", async () => {
+    mockTsvExtraction();
+    const uncommented: DataGridTableMeta = {
+      tableName: "t_users",
+      primaryKeys: [],
+      columns: [
+        { name: "id", data_type: "int", is_nullable: false },
+        { name: "name", data_type: "varchar", is_nullable: true },
+      ],
+    };
+    const state = createExportState(uncommented, ["id", "name"], undefined, undefined, undefined, undefined, [1]);
+
+    await state.copyWithExtractor("tsv-annotated");
+
+    expect(copyToClipboard).toHaveBeenCalledWith(["t_users", "\t", "id\tname", dataText].join("\n"));
   });
 });

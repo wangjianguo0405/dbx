@@ -7995,6 +7995,9 @@ const {
   spatialValues: computed(() => props.result.spatial_values),
   columnTypes: visibleColumnTypes,
   allColumnTypes,
+  // Feeds the annotated TSV's first line. Read lazily inside the computed, so the
+  // ref being declared further down the setup scope is fine.
+  tableComment: computed(() => tableOverviewComment.value),
   whereInput: computed(() => currentWhereInput()),
   orderBy: computed(() => currentOrderBy()),
   exportBatchSize: computed(() => settingsStore.editorSettings.exportBatchSize),
@@ -8027,6 +8030,7 @@ function copyExtractorLabel(extractor: DataGridCopyExtractorId): string {
     raw: t("grid.copyExtractorRaw"),
     tsv: "TSV",
     "tsv-with-headers": t("grid.copyExtractorWithHeaders", { format: "TSV" }),
+    "tsv-annotated": t("grid.copyExtractorTsvAnnotated"),
     csv: "CSV",
     "csv-with-headers": t("grid.copyExtractorWithHeaders", { format: "CSV" }),
     "pipe-separated": t("grid.copyExtractorPipeSeparated"),

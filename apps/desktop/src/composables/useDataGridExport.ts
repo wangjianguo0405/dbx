@@ -97,6 +97,8 @@ export interface UseDataGridExportOptions {
   context: ComputedRef<"results" | "table-data" | undefined>;
   sourceColumns: ComputedRef<Array<string | undefined> | undefined>;
   columnComments?: ComputedRef<Array<string | undefined>>;
+  /** Table comment; feeds the annotated TSV format's first line. */
+  tableComment?: ComputedRef<string | null | undefined>;
   allColumnComments?: ComputedRef<Array<string | undefined>>;
   mongoDocuments?: ComputedRef<unknown[] | undefined>;
   spatialColumns?: ComputedRef<QueryResult["spatial_columns"] | undefined>;
@@ -192,6 +194,7 @@ export function useDataGridExport(options: UseDataGridExportOptions) {
     copyInsertTargetLabel,
     sourceColumns,
     columnComments: columnCommentsOption,
+    tableComment: tableCommentOption,
     allColumnComments: allColumnCommentsOption,
     databaseType,
     identifierQuote,
@@ -808,6 +811,10 @@ export function useDataGridExport(options: UseDataGridExportOptions) {
     },
     contextCell,
     contextSelectionIsSynthetic,
+    // Comments come from the same resolver the XLSX header export uses, so a JOIN
+    // resolves each result column to its own source before falling back by name.
+    tableComment: tableCommentOption,
+    resolveColumnComments: (targetColumns) => commentsForExportColumns(targetColumns),
   });
 
   async function copyAll() {
