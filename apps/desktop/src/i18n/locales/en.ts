@@ -2235,6 +2235,7 @@ export default {
     copyExtractorSmart: "Smart Copy",
     copyExtractorRaw: "Cell Text",
     copyExtractorWithHeaders: "{format} with Headers",
+    copyExtractorTsvAnnotated: "TSV with Comments",
     copyExtractorOneRow: "One-row",
     copyExtractorJsonArray: "JSON Array",
     copyExtractorSqlInList: "SQL IN List",
