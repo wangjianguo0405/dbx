@@ -17,17 +17,21 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_updater::{Update, UpdaterBuilder, UpdaterExt};
 
-const OFFICIAL_UPDATE_ENDPOINTS: [&str; 2] = [
-    "https://dl.dbxio.com/releases/stable/latest.json",
-    "https://github.com/t8y2/dbx/releases/latest/download/latest.json",
-];
-const BETA_UPDATE_ENDPOINTS: [&str; 1] = ["https://dl.dbxio.com/releases/beta/latest.json"];
+// This fork ships its own update artifacts. Resolving to the upstream endpoints would
+// install a stock DBX build without this fork's copy-format changes, so the check and
+// every download prefix point at the fork's releases instead. The CNB mirror and the
+// upstream stable/beta channels are all mapped to the same place because this fork has
+// no mainland mirror and no separate beta channel of its own.
+const OFFICIAL_UPDATE_ENDPOINTS: [&str; 1] =
+    ["https://github.com/wangjianguo0405/dbx/releases/latest/download/latest.json"];
+const BETA_UPDATE_ENDPOINTS: [&str; 1] =
+    ["https://github.com/wangjianguo0405/dbx/releases/latest/download/latest.json"];
 #[cfg(test)]
-const R2_LATEST_RELEASE_DOWNLOAD_PREFIX: &str = "https://dl.dbxio.com/releases/latest/";
-const R2_STABLE_RELEASE_DOWNLOAD_PREFIX: &str = "https://dl.dbxio.com/releases/stable/latest/";
-const R2_BETA_RELEASE_DOWNLOAD_PREFIX: &str = "https://dl.dbxio.com/releases/beta/latest/";
-const CNB_RELEASE_DOWNLOAD_PREFIX: &str = "https://cnb.cool/dbxio.com/dbx/-/releases/download/";
-const GITHUB_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/t8y2/dbx/releases/download/";
+const R2_LATEST_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/latest/download/";
+const R2_STABLE_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/latest/download/";
+const R2_BETA_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/latest/download/";
+const CNB_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/latest/download/";
+const GITHUB_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/download/";
 const UPDATE_DOWNLOAD_PROGRESS_EVENT: &str = "update-download-progress";
 const DOWNLOAD_CANCELED_ERROR: &str = "Download canceled by user.";
 const DOWNLOAD_STALL_TIMEOUT: Duration = Duration::from_secs(15);
@@ -1200,16 +1204,16 @@ mod tests {
     #[test]
     fn rewrites_github_asset_url_to_cnb() {
         let download_url = UpdateDownloadSource::Cnb
-            .rewrite_download_url("https://github.com/t8y2/dbx/releases/download/v0.5.39/DBX_0.5.39_aarch64.dmg")
+            .rewrite_download_url("https://github.com/wangjianguo0405/dbx/releases/download/v0.5.39/DBX_0.5.39_aarch64.dmg")
             .unwrap()
             .unwrap();
-        assert_eq!(download_url, "https://cnb.cool/dbxio.com/dbx/-/releases/download/v0.5.39/DBX_0.5.39_aarch64.dmg");
+        assert_eq!(download_url, format!("{CNB_RELEASE_DOWNLOAD_PREFIX}v0.5.39/DBX_0.5.39_aarch64.dmg"));
     }
 
     #[test]
     fn accepts_existing_cnb_asset_url() {
         let download_url = UpdateDownloadSource::Cnb
-            .rewrite_download_url("https://cnb.cool/dbxio.com/dbx/-/releases/download/v0.5.39/DBX_0.5.39_aarch64.dmg")
+            .rewrite_download_url(&format!("{CNB_RELEASE_DOWNLOAD_PREFIX}v0.5.39/DBX_0.5.39_aarch64.dmg"))
             .unwrap();
         assert_eq!(download_url, None);
     }
@@ -1260,7 +1264,7 @@ mod tests {
             None,
         );
         assert_eq!(candidates.len(), 3);
-        assert_eq!(candidates[0], "https://cnb.cool/dbxio.com/dbx/-/releases/download/v0.5.64/DBX_0.5.64_aarch64.dmg");
+        assert_eq!(candidates[0], format!("{CNB_RELEASE_DOWNLOAD_PREFIX}v0.5.64/DBX_0.5.64_aarch64.dmg"));
         assert_eq!(candidates[1], format!("{R2_STABLE_RELEASE_DOWNLOAD_PREFIX}DBX_0.5.64_aarch64.dmg"));
         assert_eq!(candidates[2], "https://github.com/t8y2/dbx/releases/download/v0.5.64/DBX_0.5.64_aarch64.dmg");
     }
@@ -1289,7 +1293,7 @@ mod tests {
         );
         assert_eq!(
             candidates[0],
-            "https://cnb.cool/dbxio.com/dbx/-/releases/download/v0.6.60-beta.20261028.1/DBX_0.6.60_x64-setup.exe"
+            format!("{CNB_RELEASE_DOWNLOAD_PREFIX}v0.6.60-beta.20261028.1/DBX_0.6.60_x64-setup.exe")
         );
         assert_eq!(candidates[1], format!("{R2_BETA_RELEASE_DOWNLOAD_PREFIX}DBX_0.6.60_x64-setup.exe"));
         assert_eq!(
@@ -1305,9 +1309,9 @@ mod tests {
             .portable_asset_candidates("0.6.60", "x86_64", UpdateChannel::Beta, None)
             .unwrap();
         assert_eq!(candidates[0].archive_url, format!("{R2_BETA_RELEASE_DOWNLOAD_PREFIX}DBX_0.6.60_x64-portable.zip"));
-        assert!(!candidates
-            .iter()
-            .any(|candidate| candidate.archive_url.starts_with(R2_LATEST_RELEASE_DOWNLOAD_PREFIX)));
+        // This fork serves a single update channel: the beta alias deliberately resolves
+        // to the same prefix as the latest alias, so a beta URL is also a latest URL.
+        assert_eq!(R2_BETA_RELEASE_DOWNLOAD_PREFIX, R2_LATEST_RELEASE_DOWNLOAD_PREFIX);
     }
 
     #[test]
