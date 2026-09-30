@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_DATA_GRID_EXTRACTOR_OPTIONS, DATA_GRID_COPY_EXTRACTOR_DESCRIPTORS, DATA_GRID_DEFAULT_COPY_PREFERENCES, annotatedMetadataCell, annotatedTableHeader, normalizeDataGridCopyPreference, normalizeDataGridExtractorOptions, resolveDataGridCopyPreference, validateDataGridExtractorOptions } from "@/lib/dataGrid/dataGridCopyExtractor";
+import {
+  DEFAULT_DATA_GRID_EXTRACTOR_OPTIONS,
+  DATA_GRID_COPY_EXTRACTOR_DESCRIPTORS,
+  DATA_GRID_DEFAULT_COPY_PREFERENCES,
+  annotatedMetadataCell,
+  annotatedTableHeader,
+  normalizeDataGridCopyPreference,
+  normalizeDataGridExtractorOptions,
+  resolveDataGridCopyPreference,
+  validateDataGridExtractorOptions,
+} from "@/lib/dataGrid/dataGridCopyExtractor";
 
 describe("data-grid extractor options", () => {
   it("preserves native SQL defaults and normalizes portable INSERT options", () => {
@@ -99,13 +109,13 @@ describe("data-grid extractor options", () => {
 });
 
 describe("tsv-annotated", () => {
-  it("writes `comment（table）` and degrades to whichever half exists", () => {
-    expect(annotatedTableHeader("ポートフォリオ属性", "t_portfolio_attribute")).toBe("ポートフォリオ属性（t_portfolio_attribute）");
+  it("writes `table（comment）` and degrades to whichever half exists", () => {
+    expect(annotatedTableHeader("ポートフォリオ属性", "t_portfolio_attribute")).toBe("t_portfolio_attribute（ポートフォリオ属性）");
     expect(annotatedTableHeader(null, "t_users")).toBe("t_users");
     expect(annotatedTableHeader("ユーザー", undefined)).toBe("ユーザー");
     expect(annotatedTableHeader("   ", "  ")).toBe("");
     // The table comment is free text, so a full-width bracket inside it is kept as-is.
-    expect(annotatedTableHeader("name（alt）", "t")).toBe("name（alt）（t）");
+    expect(annotatedTableHeader("name（alt）", "t")).toBe("t（name（alt））");
   });
 
   it("collapses tabs and line breaks inside a metadata cell", () => {

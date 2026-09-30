@@ -8581,9 +8581,9 @@ const {
   spatialValues: computed(() => props.result.spatial_values),
   columnTypes: visibleColumnTypes,
   allColumnTypes,
-  // Feeds the annotated TSV's first line. Read lazily inside the computed, so the
-  // ref being declared further down the setup scope is fine.
-  tableComment: computed(() => tableOverviewComment.value),
+  // Feeds the annotated TSV's first line. Declared further down the setup scope; it
+  // is only invoked at copy time, well after that declaration has run.
+  resolveTableComment: resolveTableCommentForExport,
   whereInput: computed(() => currentWhereInput()),
   orderBy: computed(() => effectiveOrderBy()),
   exportBatchSize: computed(() => settingsStore.editorSettings.exportBatchSize),
@@ -11838,6 +11838,24 @@ const metadataLoaders = useDataGridTableMetadataLoaders({
 });
 
 const { fetchDdl, fetchTableInfoColumns, fetchTableOwner, currentIndexTableIdentity, fetchIndexes, refreshMongoIndexMetadataAfterMutation, currentForeignKeyTableIdentity, fetchForeignKeys: fetchForeignKeysMetadata, fetchTriggers, fetchConstraints, fetchPartitions } = metadataLoaders;
+
+/** The annotated TSV's first line carries the table comment, but fetchTableOverview
+ *  only runs while the info tab is shown and active. Resolve it here so a copy is
+ *  correct without the user ever opening that panel. */
+async function resolveTableCommentForExport(): Promise<string | null> {
+  if (tableOverviewComment.value) return tableOverviewComment.value;
+  const connectionId = props.connectionId;
+  const database = props.database;
+  const tableName = props.tableMeta?.tableName;
+  if (!connectionId || !database || !tableName) return null;
+  try {
+    return await api.getTableComment(connectionId, database, props.tableMeta?.schema ?? "", tableName, props.tableMeta?.catalog);
+  } catch (error) {
+    // Comment support is best-effort across drivers; degrade to the bare table name.
+    console.debug("table overview comment unavailable", error);
+    return null;
+  }
+}
 
 async function fetchTableOverview(force = false) {
   const connectionId = props.connectionId;
