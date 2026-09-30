@@ -325,13 +325,13 @@ export function validateDataGridExtractorOptions(extractor: DataGridCopyExtracto
   return null;
 }
 
-/** First line of a "tsv-annotated" extraction: `comment（table）`, degrading to
+/** First line of a "tsv-annotated" extraction: `table（comment）`, degrading to
  *  whichever half exists. */
 export function annotatedTableHeader(tableComment: string | null | undefined, tableName: string | undefined): string {
   const comment = (tableComment ?? "").trim();
   const name = (tableName ?? "").trim();
-  if (comment && name) return `${comment}（${name}）`;
-  return comment || name || "";
+  if (comment && name) return `${name}（${comment}）`;
+  return name || comment || "";
 }
 
 /** A tab or a line break inside a metadata cell would shift every column after it,
