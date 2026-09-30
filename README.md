@@ -1,3 +1,9 @@
+> **This is a personal fork of [DBX](https://github.com/t8y2/dbx), not an official release,
+> and it is not endorsed by the upstream project.**
+> It adds a "TSV with comments" data-grid copy format and serves application updates from
+> this fork's own releases instead of the upstream project's. See [NOTICE](NOTICE) for the
+> full list of modifications. Licensed under the Apache License 2.0 ([LICENSE](LICENSE)).
+
 <div align="center">
   <p style="font-size: 18px; white-space: nowrap;"><strong>100+ databases in 25 MB. Desktop, Docker, CLI, built-in AI assistant, and MCP Server.</strong></p>
 
