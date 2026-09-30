@@ -1,0 +1,17 @@
+This distribution is a modified fork of DBX (https://github.com/t8y2/dbx).
+
+Modifications from the original work:
+
+  - Added a "TSV with comments" data-grid copy format, which prefixes a copied
+    TSV with the table name and comment, the column comments and the column
+    names.
+  - Changed the auto-update source, public key and release pipeline so updates
+    are served from this fork's own releases instead of the upstream project's.
+
+This is not an official DBX release and is not endorsed by the upstream project.
+The DBX name and logo remain the property of the upstream project; no trademark
+rights are granted by the license below.
+
+The original work is Copyright its contributors and is licensed under the Apache
+License, Version 2.0. A copy of that license is included in the LICENSE file, and
+is redistributed alongside every build produced from this repository.
