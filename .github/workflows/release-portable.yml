@@ -73,6 +73,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
           Copy-Item $exePath (Join-Path $portableDir "DBX.exe") -Force
           Copy-Item "LICENSE" (Join-Path $portableDir "LICENSE") -Force
+          Copy-Item "NOTICE" (Join-Path $portableDir "NOTICE") -Force
           Copy-Item "README.md" (Join-Path $portableDir "README.md") -Force
           Set-Content -Path (Join-Path $portableDir "portable.dbx") -Value "" -NoNewline
 
