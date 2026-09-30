@@ -79,8 +79,9 @@ interface UseDataGridExtractorOptions {
   buildMongoInsert: (extractorOptions: DataGridExtractorOptions, rowLimit?: number) => Promise<string | undefined>;
   buildMongoUpdate?: (request: DataGridExtractRequest, rowLimit?: number) => Promise<string | undefined>;
   canBuildMongoUpdate?: (request: DataGridExtractRequest) => boolean;
-  /** Table comment for the annotated TSV's first line; null/undefined when unknown. */
-  tableComment?: ComputedRef<string | null | undefined>;
+  /** Table comment for the annotated TSV's first line; null/undefined when unknown.
+   *  Only consulted for the annotated TSV, and free to fetch on a cache miss. */
+  resolveTableComment?: () => Promise<string | null | undefined>;
   /** Per-column comments aligned to the given display names, for the annotated TSV's second line. */
   resolveColumnComments?: (targetColumns: readonly string[]) => Array<string | undefined>;
 }
@@ -392,7 +393,7 @@ export function useDataGridExtractor(options: UseDataGridExtractorOptions) {
   /**
    * `tsv-annotated` is assembled here instead of in the backend: the data rows come
    * from an ordinary TSV extraction, so quoting, NULL text and binary handling stay
-   * byte-identical to "Copy as TSV", and the three metadata lines are prepended.
+   * byte-identical to "Copy as TSV", and the metadata lines are prepended.
    */
   async function resolveAnnotatedTsvResult(request: DataGridExtractRequest): Promise<DataGridExtractResult | undefined> {
     if (request.extractor !== "tsv-annotated") return undefined;
@@ -402,11 +403,14 @@ export function useDataGridExtractor(options: UseDataGridExtractorOptions) {
     const lines: string[] = [];
     // request.tableMeta is only populated for SQL-category extractors, so the table
     // identity comes from the composable's own ref instead.
-    const header = annotatedTableHeader(options.tableComment?.value, options.tableMeta?.value?.tableName);
+    const header = annotatedTableHeader(await options.resolveTableComment?.(), options.tableMeta?.value?.tableName);
     if (header) lines.push(header);
-    // The comment line keeps a placeholder per column even when nothing is commented,
-    // so the columns stay aligned with the header and data lines.
-    lines.push(comments.map((comment) => annotatedMetadataCell(comment)).join("\t"));
+    // The comment line is dropped entirely when nothing is commented: an all-placeholder
+    // line would only add an empty row for consumers that read this format by position.
+    // When even one column is commented it stays, keeping the columns aligned.
+    if (comments.some((comment) => (comment ?? "").trim())) {
+      lines.push(comments.map((comment) => annotatedMetadataCell(comment)).join("\t"));
+    }
     lines.push(columnNames.map((name) => annotatedMetadataCell(name)).join("\t"));
     return {
       text: dataResult.text.length > 0 ? `${lines.join("\n")}\n${dataResult.text}` : lines.join("\n"),
