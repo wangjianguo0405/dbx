@@ -16,13 +16,15 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
-const OFFICIAL_UPDATE_ENDPOINTS: [&str; 2] = [
-    "https://dl.dbxio.com/releases/latest/latest.json",
-    "https://github.com/t8y2/dbx/releases/latest/download/latest.json",
-];
-const R2_LATEST_RELEASE_DOWNLOAD_PREFIX: &str = "https://dl.dbxio.com/releases/latest/";
-const CNB_RELEASE_DOWNLOAD_PREFIX: &str = "https://cnb.cool/dbxio.com/dbx/-/releases/download/";
-const GITHUB_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/t8y2/dbx/releases/download/";
+// This fork ships its own update artifacts. Resolving to the upstream endpoints would
+// install a stock DBX build without this fork's copy-format changes, so the check and
+// every download prefix point at the fork's releases instead. The CNB mirror is mapped
+// to the same place because this fork has no mainland mirror of its own.
+const OFFICIAL_UPDATE_ENDPOINTS: [&str; 1] =
+    ["https://github.com/wangjianguo0405/dbx/releases/latest/download/latest.json"];
+const R2_LATEST_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/latest/download/";
+const CNB_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/latest/download/";
+const GITHUB_RELEASE_DOWNLOAD_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/download/";
 const UPDATE_DOWNLOAD_PROGRESS_EVENT: &str = "update-download-progress";
 const DOWNLOAD_CANCELED_ERROR: &str = "Download canceled by user.";
 const DOWNLOAD_STALL_TIMEOUT: Duration = Duration::from_secs(15);

@@ -1,0 +1,116 @@
+name: Release Windows Portable
+
+# Builds the portable ZIP, signs it with this fork's updater key, and publishes it as a
+# GitHub release so an installed portable build can auto-update itself.
+#
+# The published version is read from src-tauri/tauri.conf.json, and it must be greater
+# than the version currently running, otherwise no client will offer the update. Bump
+# package.json, Cargo.toml and tauri.conf.json together before running this.
+#
+# Requires the repository secret TAURI_SIGNING_PRIVATE_KEY_BASE64. The public half of
+# that key pair must be the `plugins.updater.pubkey` baked into the build.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-portable:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Build Windows executable
+        env:
+          CXXFLAGS: /std:c++17 /EHsc
+        run: pnpm tauri build --target x86_64-pc-windows-msvc --no-bundle --ci
+
+      - name: Decode updater signing key
+        shell: pwsh
+        env:
+          KEY_B64: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_BASE64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:KEY_B64)) {
+            throw "Repository secret TAURI_SIGNING_PRIVATE_KEY_BASE64 is not set."
+          }
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\updater.key", [Convert]::FromBase64String($env:KEY_B64.Trim()))
+
+      - name: Package, sign and publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY_PATH: ${{ runner.temp }}\updater.key
+        run: |
+          $version = (Get-Content "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json).version
+          $arch = "x64"
+          $tag = "v$version"
+          $zipName = "DBX_${version}_${arch}-portable.zip"
+          $portableDir = "portable/DBX_${version}_${arch}"
+          $exePath = "target/x86_64-pc-windows-msvc/release/dbx.exe"
+
+          if (!(Test-Path $exePath)) { throw "Missing Windows executable: $exePath" }
+
+          New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+          Copy-Item $exePath (Join-Path $portableDir "DBX.exe") -Force
+          Copy-Item "LICENSE" (Join-Path $portableDir "LICENSE") -Force
+          Copy-Item "README.md" (Join-Path $portableDir "README.md") -Force
+          Set-Content -Path (Join-Path $portableDir "portable.dbx") -Value "" -NoNewline
+
+          # The updater pulls this manifest out of the archive and refuses the package
+          # unless its version, arch and executable hash all match.
+          $manifest = [ordered]@{
+            schema_version    = 1
+            version           = $version
+            arch              = $arch
+            executable        = "DBX.exe"
+            executable_sha256 = (Get-FileHash -LiteralPath (Join-Path $portableDir "DBX.exe") -Algorithm SHA256).Hash.ToLowerInvariant()
+          } | ConvertTo-Json
+          Set-Content -Path (Join-Path $portableDir "portable-update.json") -Value $manifest -Encoding utf8NoBOM
+
+          Compress-Archive -Path (Join-Path $portableDir "*") -DestinationPath $zipName -Force
+
+          # The key is passwordless, so pass an explicit empty value; omitting it makes
+          # the signer prompt and hang the job.
+          pnpm tauri signer sign "--password=" $zipName
+          if (!(Test-Path "$zipName.sig")) { throw "Missing signature: $zipName.sig" }
+
+          # The updater checks this manifest for the latest version, then derives the
+          # archive URL from that version, so the file name and tag must stay in sync.
+          $latest = [ordered]@{
+            version   = $version
+            notes     = "Portable build including the annotated-TSV copy format."
+            pub_date  = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = [ordered]@{
+              "windows-x86_64" = [ordered]@{
+                signature = (Get-Content "$zipName.sig" -Raw).Trim()
+                url       = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$zipName"
+              }
+            }
+          } | ConvertTo-Json -Depth 4
+          Set-Content -Path "latest.json" -Value $latest -Encoding utf8NoBOM
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title "DBX $version" --notes "Portable build including the annotated-TSV copy format."
+          }
+          gh release upload $tag $zipName "$zipName.sig" "latest.json" --clobber
