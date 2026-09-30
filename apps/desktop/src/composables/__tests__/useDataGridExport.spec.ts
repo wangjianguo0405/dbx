@@ -2747,14 +2747,14 @@ describe("tsv-annotated copy", () => {
 
   it("prepends the table comment, the column comments and the column names", async () => {
     mockTsvExtraction();
-    const state = createExportState(annotatedTable, columns, undefined, undefined, undefined, undefined, [1], DEFAULT_DATA_GRID_EXTRACTOR_OPTIONS, false, undefined, false, undefined, undefined, "postgres", undefined, { tableComment: computed(() => "ポートフォリオ属性") });
+    const state = createExportState(annotatedTable, columns, undefined, undefined, undefined, undefined, [1], DEFAULT_DATA_GRID_EXTRACTOR_OPTIONS, false, undefined, false, undefined, undefined, "postgres", undefined, { resolveTableComment: async () => "ポートフォリオ属性" });
 
     await state.copyWithExtractor("tsv-annotated");
 
     // The data half must be an ordinary TSV extraction so quoting, NULL text and
     // binary handling stay byte-identical to "Copy as TSV".
     expect(extractDataGridSelection).toHaveBeenCalledWith(expect.objectContaining({ extractor: "tsv" }));
-    const text = ["ポートフォリオ属性（t_portfolio_attribute）", "ポートフォリオコード\t", "portfolio_cd\tgoal_freeword", dataText].join("\n");
+    const text = ["t_portfolio_attribute（ポートフォリオ属性）", "ポートフォリオコード\t", "portfolio_cd\tgoal_freeword", dataText].join("\n");
     expect(copyToClipboard).toHaveBeenCalledWith(text);
     // The three metadata lines are clipboard text only: the internal copy the grid
     // remembers for a paste-back stays data-only, so nothing extra lands in the grid.
@@ -2770,7 +2770,7 @@ describe("tsv-annotated copy", () => {
     expect(copyToClipboard).toHaveBeenCalledWith(["t_portfolio_attribute", "ポートフォリオコード\t", "portfolio_cd\tgoal_freeword", dataText].join("\n"));
   });
 
-  it("keeps a per-column placeholder even when nothing in the selection is commented", async () => {
+  it("drops the comment line entirely when nothing in the selection is commented", async () => {
     mockTsvExtraction();
     const uncommented: DataGridTableMeta = {
       tableName: "t_users",
@@ -2784,6 +2784,6 @@ describe("tsv-annotated copy", () => {
 
     await state.copyWithExtractor("tsv-annotated");
 
-    expect(copyToClipboard).toHaveBeenCalledWith(["t_users", "\t", "id\tname", dataText].join("\n"));
+    expect(copyToClipboard).toHaveBeenCalledWith(["t_users", "id\tname", dataText].join("\n"));
   });
 });
