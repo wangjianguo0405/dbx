@@ -2,12 +2,13 @@ pub use dbx_platform::version::{is_newer_version, normalize_version, parse_versi
 
 use serde::{Deserialize, Serialize};
 
-const LATEST_JSON_GITHUB_PATH: &str = "https://github.com/t8y2/dbx/releases/latest/download/latest.json";
-const LATEST_JSON_R2_PATH: &str = "releases/latest/latest.json";
-const LATEST_JSON_CNB_PATH: &str = "https://cnb.cool/dbxio.com/dbx/-/releases/latest/download/latest.json";
+// This fork serves its own updates. Resolving the latest version from the upstream
+// project — via its GitHub release or its CDN mirror — would offer a stock DBX build
+// that lacks this fork's changes, so those sources are gone rather than merely demoted.
+const LATEST_JSON_GITHUB_PATH: &str = "https://github.com/wangjianguo0405/dbx/releases/latest/download/latest.json";
 const LATEST_EN_NOTES_R2_PATH: &str = "changelog/latest-en.json";
-const GITHUB_RELEASE_API_PREFIX: &str = "https://api.github.com/repos/t8y2/dbx/releases/tags/v";
-const RELEASE_URL_PREFIX: &str = "https://github.com/t8y2/dbx/releases/tag/v";
+const GITHUB_RELEASE_API_PREFIX: &str = "https://api.github.com/repos/wangjianguo0405/dbx/releases/tags/v";
+const RELEASE_URL_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/tag/v";
 
 #[derive(Debug, Deserialize)]
 pub struct TauriRelease {
@@ -87,18 +88,10 @@ async fn fetch_first_available(client: &reqwest::Client, candidates: &[String]) 
     Err(format!("Failed to check updates: {}", errors.join("; ")))
 }
 
-fn update_check_candidates(source: crate::DownloadSource) -> Vec<String> {
-    match source {
-        crate::DownloadSource::Official => {
-            vec![format!("{}{LATEST_JSON_R2_PATH}", crate::R2_CDN_BASE), LATEST_JSON_GITHUB_PATH.to_string()]
-        }
-        // CNB exposes a moving latest release, so checking CNB does not need an official-source version first.
-        crate::DownloadSource::Cnb => vec![
-            LATEST_JSON_CNB_PATH.to_string(),
-            format!("{}{LATEST_JSON_R2_PATH}", crate::R2_CDN_BASE),
-            LATEST_JSON_GITHUB_PATH.to_string(),
-        ],
-    }
+fn update_check_candidates(_source: crate::DownloadSource) -> Vec<String> {
+    // The download-source setting is kept for compatibility, but every source now
+    // resolves to this fork, so no branch can reach the upstream manifest.
+    vec![LATEST_JSON_GITHUB_PATH.to_string()]
 }
 
 // 拉取 R2 上的英文 release notes（仅最新版本）。version 必须与 latest.json 的 version 一致才采用，
@@ -294,21 +287,11 @@ mod tests {
     }
 
     #[test]
-    fn update_check_candidates_follow_selected_source() {
-        assert_eq!(
-            super::update_check_candidates(crate::DownloadSource::Official),
-            vec![
-                "https://dl.dbxio.com/releases/latest/latest.json",
-                "https://github.com/t8y2/dbx/releases/latest/download/latest.json",
-            ]
-        );
-        assert_eq!(
-            super::update_check_candidates(crate::DownloadSource::Cnb),
-            vec![
-                "https://cnb.cool/dbxio.com/dbx/-/releases/latest/download/latest.json",
-                "https://dl.dbxio.com/releases/latest/latest.json",
-                "https://github.com/t8y2/dbx/releases/latest/download/latest.json",
-            ]
-        );
+    fn update_check_candidates_always_use_this_fork() {
+        // Whichever download source is selected, the check must resolve against this
+        // fork — reaching the upstream manifest would offer a stock DBX build.
+        let expected = vec!["https://github.com/wangjianguo0405/dbx/releases/latest/download/latest.json"];
+        assert_eq!(super::update_check_candidates(crate::DownloadSource::Official), expected);
+        assert_eq!(super::update_check_candidates(crate::DownloadSource::Cnb), expected);
     }
 }
