@@ -17,7 +17,7 @@ export function previewAppUpdateInfo(currentVersion: string): UpdateInfo {
     portable_mode: false,
     manual_update_only: false,
     release_name: showAppUpdate ? "DBX v0.6.16 Preview" : `DBX v${current}`,
-    release_url: "https://github.com/t8y2/dbx/releases",
+    release_url: "https://github.com/wangjianguo0405/dbx/releases",
     release_notes: showAppUpdate
       ? `## 更新预览
 
