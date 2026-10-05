@@ -97,25 +97,23 @@ export function tagVersion(version: string): string {
   return trimmed.startsWith("v") ? trimmed : `v${trimmed}`;
 }
 
+// This fork has no CNB mirror, so the download-source setting no longer picks a
+// different release page — every branch resolves to the fork's own releases.
 export function resolveUpdateReleaseUrl(info: api.UpdateInfo | null, source: unknown, fallbackUrl: string): string {
   const normalizedSource = normalizeUpdateDownloadSource(source);
   if (normalizedSource === "cnb" && info?.latest_version) {
-    return `https://cnb.cool/dbxio.com/dbx/-/releases/tag/${tagVersion(info.latest_version)}`;
+    return `https://github.com/wangjianguo0405/dbx/releases/tag/${tagVersion(info.latest_version)}`;
   }
-  if (normalizedSource === "cnb") return "https://cnb.cool/dbxio.com/dbx/-/releases";
+  if (normalizedSource === "cnb") return "https://github.com/wangjianguo0405/dbx/releases";
   return info?.release_url || fallbackUrl;
 }
 
 /**
- * 按版本 tag 解析“下载页”地址：CNB 源指向 CNB 的 release 页，其余指向 GitHub release 页。
+ * 按版本 tag 解析“下载页”地址。本 fork 只发布到 GitHub，所以所有下载源都落到这里。
  * 用于历史版本回退：只做跳转，不在应用内下载/安装旧版本。
  */
-export function resolveReleaseTagUrl(tag: string, source: unknown): string {
-  const normalizedTag = tagVersion(tag);
-  if (normalizeUpdateDownloadSource(source) === "cnb") {
-    return `https://cnb.cool/dbxio.com/dbx/-/releases/tag/${encodeURIComponent(normalizedTag)}`;
-  }
-  return `https://github.com/wangjianguo0405/dbx/releases/tag/${encodeURIComponent(normalizedTag)}`;
+export function resolveReleaseTagUrl(tag: string, _source: unknown): string {
+  return `https://github.com/wangjianguo0405/dbx/releases/tag/${encodeURIComponent(tagVersion(tag))}`;
 }
 
 export async function resolveUpdaterProxy(): Promise<string | undefined> {
