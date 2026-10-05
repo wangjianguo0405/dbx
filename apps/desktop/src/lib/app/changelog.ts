@@ -80,7 +80,7 @@ export function changelogWebsiteUrl(lang: ChangelogLang): string {
 }
 
 export function changelogReleaseUrl(tag: string): string {
-  return `https://github.com/t8y2/dbx/releases/tag/${encodeURIComponent(tag)}`;
+  return `https://github.com/wangjianguo0405/dbx/releases/tag/${encodeURIComponent(tag)}`;
 }
 
 function cached<T>(cache: Map<string, Promise<T>>, key: string, load: () => Promise<T>, force: boolean): Promise<T> {
