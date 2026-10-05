@@ -153,7 +153,7 @@ export function resolveReleaseTagUrl(tag: string, source: unknown): string {
   if (normalizeUpdateDownloadSource(source) === "cnb") {
     return `https://cnb.cool/dbxio.com/dbx/-/releases/tag/${encodeURIComponent(normalizedTag)}`;
   }
-  return `https://github.com/t8y2/dbx/releases/tag/${encodeURIComponent(normalizedTag)}`;
+  return `https://github.com/wangjianguo0405/dbx/releases/tag/${encodeURIComponent(normalizedTag)}`;
 }
 
 export async function resolveUpdaterProxy(): Promise<string | undefined> {
@@ -204,7 +204,7 @@ export function useAppUpdater(options: UseAppUpdaterOptions = {}) {
   // `isUpdateIgnored` is only a version comparison, so it also matches once the user
   // has upgraded past the ignored version; require a release that is actually on offer.
   const ignoredReleaseVersion = computed(() => (updateDownloaded.value || updateReady.value || updateInfo.value?.update_available !== true || !isUpdateIgnored(updateInfo.value, settingsStore.editorSettings.ignoredUpdateVersion) ? "" : (settingsStore.editorSettings.ignoredUpdateVersion ?? "")));
-  const latestReleaseUrl = "https://github.com/t8y2/dbx/releases/latest";
+  const latestReleaseUrl = "https://github.com/wangjianguo0405/dbx/releases/latest";
   let generation = 0;
   let activeDownload: Promise<void> | undefined;
   let automaticDownload = false;
