@@ -613,7 +613,7 @@ pub async fn download_update(
             let notes = update.body.clone().unwrap_or_default();
             (ReadyUpdate::Installer { update: Box::new(update), bytes }, manifest, None, notes)
         };
-        let release_url = format!("https://github.com/t8y2/dbx/releases/tag/{release_tag}");
+        let release_url = format!("https://github.com/wangjianguo0405/dbx/releases/tag/{release_tag}");
         let info = DownloadedUpdate {
             cache_id: uuid::Uuid::new_v4().to_string(),
             version: version.to_string(),
