@@ -2,13 +2,13 @@ pub use dbx_platform::version::{is_newer_version, normalize_version, parse_versi
 
 use serde::{Deserialize, Serialize};
 
-const LATEST_JSON_GITHUB_PATH: &str = "https://github.com/t8y2/dbx/releases/latest/download/latest.json";
-const LATEST_JSON_R2_PATH: &str = "releases/latest/latest.json";
-const LATEST_JSON_STABLE_R2_PATH: &str = "releases/stable/latest.json";
-const LATEST_JSON_BETA_R2_PATH: &str = "releases/beta/latest.json";
-const LATEST_JSON_CNB_PATH: &str = "https://cnb.cool/dbxio.com/dbx/-/releases/latest/download/latest.json";
+// This fork serves its own updates. Resolving the latest version from the upstream
+// project — via its GitHub release or its CDN mirror — would offer a stock DBX build
+// that lacks this fork's changes, so those sources are gone rather than merely demoted.
+const LATEST_JSON_GITHUB_PATH: &str = "https://github.com/wangjianguo0405/dbx/releases/latest/download/latest.json";
 const LATEST_EN_NOTES_R2_PATH: &str = "changelog/latest-en.json";
-const GITHUB_RELEASE_API_PREFIX: &str = "https://api.github.com/repos/t8y2/dbx/releases/tags/v";
+const GITHUB_RELEASE_API_PREFIX: &str = "https://api.github.com/repos/wangjianguo0405/dbx/releases/tags/v";
+const RELEASE_URL_PREFIX: &str = "https://github.com/wangjianguo0405/dbx/releases/tag/v";
 
 fn default_promoted() -> bool {
     true
@@ -125,37 +125,10 @@ async fn fetch_first_available(client: &reqwest::Client, candidates: &[String]) 
     Err(format!("Failed to check updates: {}", errors.join("; ")))
 }
 
-fn update_check_candidates(source: crate::DownloadSource, channel: UpdateChannel) -> Vec<String> {
-    let r2_path = match channel {
-        UpdateChannel::Stable => LATEST_JSON_STABLE_R2_PATH,
-        UpdateChannel::Beta => LATEST_JSON_BETA_R2_PATH,
-    };
-    match source {
-        crate::DownloadSource::Official => {
-            if matches!(channel, UpdateChannel::Beta) {
-                vec![format!("{}{}", crate::R2_CDN_BASE, r2_path)]
-            } else {
-                vec![
-                    format!("{}{}", crate::R2_CDN_BASE, r2_path),
-                    format!("{}{LATEST_JSON_R2_PATH}", crate::R2_CDN_BASE),
-                    LATEST_JSON_GITHUB_PATH.to_string(),
-                ]
-            }
-        }
-        // CNB exposes a moving latest release, so checking CNB does not need an official-source version first.
-        crate::DownloadSource::Cnb => {
-            if matches!(channel, UpdateChannel::Beta) {
-                vec![format!("{}{}", crate::R2_CDN_BASE, r2_path)]
-            } else {
-                vec![
-                    format!("{}{}", crate::R2_CDN_BASE, r2_path),
-                    LATEST_JSON_CNB_PATH.to_string(),
-                    format!("{}{LATEST_JSON_R2_PATH}", crate::R2_CDN_BASE),
-                    LATEST_JSON_GITHUB_PATH.to_string(),
-                ]
-            }
-        }
-    }
+fn update_check_candidates(_source: crate::DownloadSource, _channel: UpdateChannel) -> Vec<String> {
+    // The download-source setting is kept for compatibility, but every source now
+    // resolves to this fork, so no branch can reach the upstream manifest.
+    vec![LATEST_JSON_GITHUB_PATH.to_string()]
 }
 
 // 拉取 R2 上的英文 release notes（仅最新版本）。version 必须与 latest.json 的 version 一致才采用，
@@ -235,7 +208,7 @@ pub fn build_update_info(release: TauriRelease, current_version: &str) -> Update
     let release_url = github
         .and_then(|metadata| non_empty(metadata.html_url.as_deref()))
         .map(ToOwned::to_owned)
-        .unwrap_or_else(|| format!("https://github.com/t8y2/dbx/releases/tag/{release_tag}"));
+        .unwrap_or_else(|| format!("{RELEASE_URL_PREFIX}{}", release_tag.trim_start_matches('v')));
     UpdateInfo {
         update_available,
         portable_mode: false,
@@ -352,7 +325,7 @@ mod tests {
         let info = build_update_info(release, "0.5.2");
 
         assert_eq!(info.release_name, "DBX v0.5.3");
-        assert_eq!(info.release_url, "https://github.com/t8y2/dbx/releases/tag/v0.5.3");
+        assert_eq!(info.release_url, "https://github.com/wangjianguo0405/dbx/releases/tag/v0.5.3");
         assert_eq!(info.release_notes, "### 新功能\n\n真实发布说明");
         assert!(!info.portable_mode);
     }
@@ -413,7 +386,7 @@ mod tests {
 
         let info = build_update_info(release, "0.6.59");
 
-        assert_eq!(info.release_url, "https://github.com/t8y2/dbx/releases/tag/v0.6.60-beta.20261028.1");
+        assert_eq!(info.release_url, "https://github.com/wangjianguo0405/dbx/releases/tag/v0.6.60-beta.20261028.1");
     }
 
     #[test]
@@ -465,27 +438,12 @@ mod tests {
     }
 
     #[test]
-    fn update_check_candidates_follow_selected_source() {
-        assert_eq!(
-            super::update_check_candidates(crate::DownloadSource::Official, UpdateChannel::Stable),
-            vec![
-                "https://dl.dbxio.com/releases/stable/latest.json",
-                "https://dl.dbxio.com/releases/latest/latest.json",
-                "https://github.com/t8y2/dbx/releases/latest/download/latest.json",
-            ]
-        );
-        assert_eq!(
-            super::update_check_candidates(crate::DownloadSource::Cnb, UpdateChannel::Stable),
-            vec![
-                "https://dl.dbxio.com/releases/stable/latest.json",
-                "https://cnb.cool/dbxio.com/dbx/-/releases/latest/download/latest.json",
-                "https://dl.dbxio.com/releases/latest/latest.json",
-                "https://github.com/t8y2/dbx/releases/latest/download/latest.json",
-            ]
-        );
-        assert_eq!(
-            super::update_check_candidates(crate::DownloadSource::Official, UpdateChannel::Beta)[0],
-            "https://dl.dbxio.com/releases/beta/latest.json"
-        );
+    fn update_check_candidates_always_use_this_fork() {
+        // Whichever download source or channel is selected, the check must resolve
+        // against this fork — reaching the upstream manifest would offer a stock DBX build.
+        let expected = vec!["https://github.com/wangjianguo0405/dbx/releases/latest/download/latest.json"];
+        assert_eq!(super::update_check_candidates(crate::DownloadSource::Official, UpdateChannel::Stable), expected);
+        assert_eq!(super::update_check_candidates(crate::DownloadSource::Cnb, UpdateChannel::Stable), expected);
+        assert_eq!(super::update_check_candidates(crate::DownloadSource::Official, UpdateChannel::Beta), expected);
     }
 }
