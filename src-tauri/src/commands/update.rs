@@ -519,7 +519,7 @@ pub async fn download_update(
             cache_id: uuid::Uuid::new_v4().to_string(),
             version: version.to_string(),
             portable_mode,
-            release_url: format!("https://github.com/t8y2/dbx/releases/tag/v{version}"),
+            release_url: format!("https://github.com/wangjianguo0405/dbx/releases/tag/v{version}"),
             release_notes: release_notes.unwrap_or(notes),
             downloaded_at: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
