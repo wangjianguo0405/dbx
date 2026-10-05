@@ -73,8 +73,8 @@ afterEach(() => {
 });
 describe("older version release pages", () => {
   it("maps a historical version to the matching GitHub release page", () => {
-    expect(resolveReleaseTagUrl("0.5.59", "official")).toBe("https://github.com/t8y2/dbx/releases/tag/v0.5.59");
-    expect(resolveReleaseTagUrl("v0.5.59", "official")).toBe("https://github.com/t8y2/dbx/releases/tag/v0.5.59");
+    expect(resolveReleaseTagUrl("0.5.59", "official")).toBe("https://github.com/wangjianguo0405/dbx/releases/tag/v0.5.59");
+    expect(resolveReleaseTagUrl("v0.5.59", "official")).toBe("https://github.com/wangjianguo0405/dbx/releases/tag/v0.5.59");
   });
 
   it("uses the CNB release page when the CNB download source is selected", () => {
