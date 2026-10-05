@@ -77,8 +77,8 @@ describe("older version release pages", () => {
     expect(resolveReleaseTagUrl("v0.5.59", "official")).toBe("https://github.com/wangjianguo0405/dbx/releases/tag/v0.5.59");
   });
 
-  it("uses the CNB release page when the CNB download source is selected", () => {
-    expect(resolveReleaseTagUrl("v0.5.59", "cnb")).toBe("https://cnb.cool/dbxio.com/dbx/-/releases/tag/v0.5.59");
+  it("resolves the CNB source to this fork too, since the fork has no CNB mirror", () => {
+    expect(resolveReleaseTagUrl("v0.5.59", "cnb")).toBe("https://github.com/wangjianguo0405/dbx/releases/tag/v0.5.59");
   });
 
   it("treats only strictly older releases as rollback candidates", () => {
