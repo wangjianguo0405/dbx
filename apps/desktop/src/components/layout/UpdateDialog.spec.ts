@@ -449,7 +449,7 @@ describe("UpdateDialog older versions", () => {
     historyButton("Open Release")?.click();
     await flushDialog();
 
-    expect(updateMocks.openExternal).toHaveBeenCalledWith("https://github.com/t8y2/dbx/releases/tag/v0.5.59");
+    expect(updateMocks.openExternal).toHaveBeenCalledWith("https://github.com/wangjianguo0405/dbx/releases/tag/v0.5.59");
   });
 
   it("keeps the history collapsed until the user expands it", async () => {
