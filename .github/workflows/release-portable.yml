@@ -60,6 +60,13 @@ jobs:
         with:
           targets: x86_64-pc-windows-msvc
 
+      # A cold Rust release build takes ~40 minutes here. Caching target/ and the
+      # cargo registry turns a rebuild after a sync into a few minutes.
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
       - name: Build Windows executable
         env:
           CXXFLAGS: /std:c++17 /EHsc
