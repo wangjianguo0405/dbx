@@ -3,9 +3,16 @@ name: Release Windows Portable
 # Builds the portable ZIP, signs it with this fork's updater key, and publishes it as a
 # GitHub release so an installed portable build can auto-update itself.
 #
-# The published version is read from src-tauri/tauri.conf.json, and it must be greater
-# than the version currently running, otherwise no client will offer the update. Bump
-# package.json, Cargo.toml and tauri.conf.json together before running this.
+# TRIGGER: push a v* tag. Do NOT expect the manual "Run workflow" button to work — GitHub
+# only exposes workflow_dispatch for workflows that exist on the DEFAULT branch, and this
+# one lives on feat/tsv-annotated only. Putting it on main would break the fast-forward
+# `gh repo sync`, so use a tag instead:
+#
+#   git tag v0.6.30 && git push origin v0.6.30
+#
+# The version baked into the build is read from src-tauri/tauri.conf.json, so bump
+# package.json, Cargo.toml and tauri.conf.json together and make the tag match. It must be
+# greater than the version currently running, otherwise no client will offer the update.
 #
 # Requires the repository secret TAURI_SIGNING_PRIVATE_KEY_BASE64. The public half of
 # that key pair must be the `plugins.updater.pubkey` baked into the build.
@@ -14,6 +21,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      target_ref:
+        description: "Branch to build (only usable once this file also exists on the default branch)"
+        required: false
+        default: "feat/tsv-annotated"
 
 permissions:
   contents: write
@@ -23,6 +35,14 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+        with:
+          # A tag push builds the tagged commit; a manual run names a branch instead.
+          ref: ${{ inputs.target_ref || github.ref }}
+
+      - name: Record built revision
+        id: revision
+        shell: bash
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -60,6 +80,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY_PATH: ${{ runner.temp }}\updater.key
+          BUILT_SHA: ${{ steps.revision.outputs.sha }}
         run: |
           $version = (Get-Content "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json).version
           $arch = "x64"
@@ -110,8 +131,10 @@ jobs:
           } | ConvertTo-Json -Depth 4
           Set-Content -Path "latest.json" -Value $latest -Encoding utf8NoBOM
 
+          # Pin the tag to the revision actually built; without --target gh tags the
+          # default branch's HEAD, which is not what these artifacts were built from.
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title "DBX $version" --notes "Portable build including the annotated-TSV copy format."
+            gh release create $tag --target $env:BUILT_SHA --title "DBX $version" --notes "Portable build including the annotated-TSV copy format."
           }
           gh release upload $tag $zipName "$zipName.sig" "latest.json" --clobber
