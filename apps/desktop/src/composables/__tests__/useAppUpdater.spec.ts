@@ -80,8 +80,8 @@ describe("older version release pages", () => {
     expect(resolveUpdateReleaseUrl({ ...info, channel: "beta", release_tag: "v1.1.0-beta.20261028.1", release_url: releaseUrl }, "cnb", "fallback")).toBe(releaseUrl);
   });
 
-  it("uses the original beta tag on CNB after promotion to stable", () => {
-    expect(resolveUpdateReleaseUrl({ ...info, channel: "stable", release_tag: "v1.1.0-beta.20261028.1" }, "cnb", "fallback")).toBe("https://cnb.cool/dbxio.com/dbx/-/releases/tag/v1.1.0-beta.20261028.1");
+  it("uses the original beta tag on the fork's release page after promotion to stable", () => {
+    expect(resolveUpdateReleaseUrl({ ...info, channel: "stable", release_tag: "v1.1.0-beta.20261028.1" }, "cnb", "fallback")).toBe("https://github.com/wangjianguo0405/dbx/releases/tag/v1.1.0-beta.20261028.1");
   });
 
   it("maps a historical version to the matching GitHub release page", () => {
